@@ -1,0 +1,5 @@
+gene,cds_position,ref_base,alt_base,source
+PLACEHOLDER_synthetic_test_gene,53,G,A,illustrative_example
+PLACEHOLDER_synthetic_test_gene,158,T,G,illustrative_example
+PLACEHOLDER_synthetic_test_gene,335,G,A,illustrative_example
+PLACEHOLDER_synthetic_test_gene,408,T,C,illustrative_example

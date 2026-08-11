@@ -1,0 +1,8 @@
+# Steps 1-3 (data prep, k-mer counting, de Bruijn graph) use only the
+# Python standard library — no dependencies to install.
+#
+# Step 5 (ML layer) will add:
+# xgboost
+# shap
+# scikit-learn
+# numpy

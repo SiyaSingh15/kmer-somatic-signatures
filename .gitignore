@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Simulated reads are regenerable via run_step1.sh — don't bloat the repo
+data/reads/*.fq
+data/reads/*.aln
+data/reads/*.sam
+
+# Downloaded reference manifest is regenerable via download_reference.py
+data/reference/manifest.json
