@@ -27,14 +27,44 @@ not inventing a new method.
 | Reference fetching | | NCBI E-utilities |
 | Mutation injection + codon translation | ✅ hand-written codon table & logic | |
 | Read simulation | | ART (`art_illumina`) |
-| k-mer counting engine | ✅ (Step 2) | |
-| Compact k-mer data structure (Bloom filter / Count-Min Sketch) | ✅ (Step 2) | |
+| Canonical k-mer extraction | ✅ | |
+| Exact k-mer counter | ✅ | |
+| Count-Min Sketch (approximate frequency counting) | ✅ | |
 | de Bruijn graph + bubble calling | ✅ (Step 3) | |
 | ML classification layer | | XGBoost, SHAP (Step 5) |
 
 ## Project status
 
-**Step 1 (this commit): grounded read simulation — done.**
+**Step 2: k-mer counting engine — done.**
+
+- `src/kmer_utils.py` — canonical k-mer extraction (sliding window +
+  reverse-complement canonicalization, so a k-mer and its reverse
+  complement always collapse to the same bucket) and a minimal FASTQ
+  parser. Shared by the counter and, in step 3, the de Bruijn graph.
+- `src/kmer_structures.py` — `ExactCounter` (a dict wrapper, for
+  comparison) and `CountMinSketch`, a fixed-memory approximate
+  frequency counter built from a flat array of counters and
+  `hashlib.blake2b`-derived hash rows (chosen for determinism across
+  runs, since Python's built-in `hash()` is randomized per process).
+- `src/benchmark_kmer_structures.py` — runs both structures on the same
+  reads and reports memory, speed, and per-k-mer accuracy.
+- `run_step2.sh` — runs the benchmark against whatever's in `data/reads/`.
+
+**Result on the current placeholder data** (k=21, CMS width=2000,
+depth=4, 1,513 distinct k-mers across both FASTQs): CMS matched the
+exact count on 47/50 sampled k-mers, with a max overestimation of 2 —
+and by construction, it never *under*estimates. Memory footprint was
+~5.9x smaller by object accounting, though at this toy gene-panel
+scale that gap is modest; it becomes the whole point at real
+sequencing-depth scale, where a dict of billions of distinct k-mers
+just isn't an option. One honest tradeoff surfaced by the benchmark:
+CMS was actually *slower* here than the dict, because `blake2b` (a
+cryptographic hash, used for determinism) costs more per call than the
+non-cryptographic hashes (xxHash, MurmurHash) production k-mer tools
+use for this reason — a natural next optimization, not a flaw to
+paper over.
+
+**Step 1: grounded read simulation — done.**
 
 - `src/download_reference.py` — fetches real RefSeq CDS FASTA for a panel
   of EMT/IDR genes (SNAI1, ZEB1 so far) via NCBI E-utilities. **Run this on
@@ -59,10 +89,9 @@ To switch to real data:
    IDR-EMT-PanCancer results, in the same `gene,cds_position,ref_base,alt_base,source`
    format (CDS-nucleotide coordinates, 1-based from the ATG).
 
-**Next: Step 2** — a from-scratch k-mer counting engine (canonical k-mers,
-hash-based exact counting) plus a compact approximate structure (Bloom
-filter or Count-Min Sketch), benchmarked against each other for memory
-and speed.
+**Next: Step 3** — a de Bruijn graph built from these k-mers, with
+bubble detection to call somatic variants directly from graph topology,
+no reference alignment involved.
 
 ## Setup
 
@@ -82,8 +111,12 @@ kmer-somatic-signatures/
 ├── src/
 │   ├── download_reference.py
 │   ├── mutate_reference.py
-│   └── simulate_reads.py
+│   ├── simulate_reads.py
+│   ├── kmer_utils.py
+│   ├── kmer_structures.py
+│   └── benchmark_kmer_structures.py
 ├── run_step1.sh
+├── run_step2.sh
 └── README.md
 ```
 
