@@ -26,14 +26,57 @@ not inventing a new method.
 |---|---|---|
 | Reference fetching | | NCBI E-utilities |
 | Mutation injection + codon translation | ✅ hand-written codon table & logic | |
-| Read simulation | | ART (`art_illumina`) |
+| Read simulation | | ART, with a pure-Python fallback for platforms without it |
 | Canonical k-mer extraction | ✅ | |
 | Exact k-mer counter | ✅ | |
 | Count-Min Sketch (approximate frequency counting) | ✅ | |
-| de Bruijn graph + bubble calling | ✅ (Step 3) | |
+| Colored de Bruijn graph + bubble calling | ✅ | |
 | ML classification layer | | XGBoost, SHAP (Step 5) |
 
 ## Project status
+
+**Step 3: de Bruijn graph + bubble calling — done, validated against ground truth.**
+
+- `src/debruijn_graph.py` — builds an undirected, colored de Bruijn
+  graph (nodes = canonical (k-1)-mers, edges = k-mers tagged with which
+  sample — normal, tumor, or both — supports them), prunes low-support
+  edges (sequencing-error noise), and detects bubbles: a tumor-only
+  component and a normal-only component that share the same two
+  "anchor" nodes, which is the graph signature a single point mutation
+  leaves behind.
+- `src/call_variants_from_bubbles.py` — orchestrates graph construction
+  and bubble detection, then validates the result against the known
+  injected mutations (available here because this is simulated data —
+  a real reference-free caller wouldn't have this luxury, which is
+  exactly why it's worth checking hard against ground truth now).
+- `run_step3.sh` — runs it end to end.
+
+**Result:** 4/4 injected mutations recovered as bubbles, 0 false
+positives, on both the ART and pure-Python read-simulation backends.
+
+**A real bug turned up during validation, worth keeping in the
+writeup:** the first version only recovered 3/4 mutations. A single
+stray read — almost certainly a sequencing error — coincidentally
+produced a "wrong-sample" k-mer right at one mutation site, which was
+enough to make `classify_edges` treat an otherwise-clean tumor-only
+region as "shared," fragmenting the bubble. Fixed by requiring a
+minimum read count per sample (not just nonzero presence) before
+calling an edge sample-supported (`--min-color-support`, default 2).
+This is the kind of failure that only shows up when you actually check
+against ground truth rather than trust a plausible-looking result —
+worth being upfront about rather than only showing the clean 4/4.
+
+**Known limitation, stated rather than hidden:** this builds an
+*undirected* graph. Canonicalizing each k-mer's two (k-1)-mer endpoints
+correctly merges the same locus regardless of which strand a read came
+from, but the graph has no explicit orientation at each node — so it
+detects bubble *topology* (sufficient to flag a candidate variant site)
+but doesn't reconstruct the mutant allele's actual sequence from a
+graph walk. Production assemblers handle this via bidirected graphs,
+which is real complexity (and, not coincidentally, close to what
+Rayan Chikhi's group has published on for compact colored de Bruijn
+graph representations) — named here as a real next step, not glossed
+over.
 
 **Step 2: k-mer counting engine — done.**
 
@@ -96,9 +139,11 @@ To switch to real data:
    IDR-EMT-PanCancer results, in the same `gene,cds_position,ref_base,alt_base,source`
    format (CDS-nucleotide coordinates, 1-based from the ATG).
 
-**Next: Step 3** — a de Bruijn graph built from these k-mers, with
-bubble detection to call somatic variants directly from graph topology,
-no reference alignment involved.
+**Next: Step 4** — validate this end to end against your real
+IDR-EMT-PanCancer mutation calls (SNAI1/ZEB1 from `download_reference.py`
+instead of the placeholder), then compare bubble-calling recall/precision
+against a standard BWA+bcftools run of the same data — the honest
+head-to-head this project has been building toward.
 
 ## Setup
 
@@ -121,9 +166,12 @@ kmer-somatic-signatures/
 │   ├── simulate_reads.py
 │   ├── kmer_utils.py
 │   ├── kmer_structures.py
-│   └── benchmark_kmer_structures.py
+│   ├── benchmark_kmer_structures.py
+│   ├── debruijn_graph.py
+│   └── call_variants_from_bubbles.py
 ├── run_step1.sh
 ├── run_step2.sh
+├── run_step3.sh
 └── README.md
 ```
 
