@@ -75,6 +75,13 @@ paper over.
   (missense/nonsense/synonymous), using a manually written codon table.
 - `src/simulate_reads.py` — wraps ART to simulate normal and tumor
   short-read FASTQ sets from the unmutated and mutated references.
+  **Falls back automatically to a built-in pure-Python simulator if
+  `art_illumina` isn't on PATH** (e.g. native Windows, where ART has no
+  straightforward binary — WSL/Linux/Mac all have it via `apt`/`conda`).
+  The fallback uses a simpler uniform substitution-error model rather
+  than ART's empirical Illumina profiles; documented as the simpler
+  option, not treated as equivalent. Force it explicitly with
+  `--force-pure-python` if you have ART installed but want to compare.
 - `run_step1.sh` — runs the above two scripts end to end.
 
 **Currently using placeholder data.** `data/reference/PLACEHOLDER_synthetic_test_gene.fasta`
