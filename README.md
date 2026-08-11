@@ -31,9 +31,36 @@ not inventing a new method.
 | Exact k-mer counter | ✅ | |
 | Count-Min Sketch (approximate frequency counting) | ✅ | |
 | Colored de Bruijn graph + bubble calling | ✅ | |
+| Alignment-based comparison baseline | | BWA-MEM, samtools, bcftools |
 | ML classification layer | | XGBoost, SHAP (Step 5) |
 
 ## Project status
+
+**Step 4: alignment-based comparison — harness done, real-data validation pending.**
+
+- `src/compare_to_alignment_based_calling.py` — runs the same tumor
+  reads through a standard BWA-MEM + bcftools pipeline (same tools as
+  [KRAS-targeted-NGS-pipeline](https://github.com/SiyaSingh15/KRAS-targeted-NGS-pipeline))
+  and reports precision/recall against ground truth, alongside the
+  same metrics for bubble calling — the direct head-to-head.
+- `run_step4_compare.sh` — runs it end to end.
+
+**Result on placeholder data:** both approaches tie, 4/4 recovered,
+0 false positives each. That's the expected, honest outcome on a
+single small non-repetitive reference — it doesn't show whether
+either approach has a real edge. The interesting comparison needs
+real gene-scale data (repeats, more complex local sequence context),
+which is the other half of this step, still pending:
+
+**Still needed — real data swap (requires your local machine + your
+own mutation catalog, not something I can do from here):**
+1. Run `python src/download_reference.py` locally to fetch real
+   SNAI1/ZEB1 CDS sequences (my build sandbox can't reach NCBI).
+2. Replace `example_mutations.csv` with real calls from your
+   IDR-EMT-PanCancer results, in the same
+   `gene,cds_position,ref_base,alt_base,source` format.
+3. Rerun `run_step1.sh` → `run_step3.sh` → `run_step4_compare.sh`
+   against the real gene(s) instead of the placeholder.
 
 **Step 3: de Bruijn graph + bubble calling — done, validated against ground truth.**
 
@@ -139,11 +166,9 @@ To switch to real data:
    IDR-EMT-PanCancer results, in the same `gene,cds_position,ref_base,alt_base,source`
    format (CDS-nucleotide coordinates, 1-based from the ATG).
 
-**Next: Step 4** — validate this end to end against your real
-IDR-EMT-PanCancer mutation calls (SNAI1/ZEB1 from `download_reference.py`
-instead of the placeholder), then compare bubble-calling recall/precision
-against a standard BWA+bcftools run of the same data — the honest
-head-to-head this project has been building toward.
+**Next: finish Step 4 with real data** (see above), then **Step 5** —
+layer XGBoost + SHAP on top of k-mer/bubble features for tumor vs
+normal classification.
 
 ## Setup
 
@@ -168,10 +193,12 @@ kmer-somatic-signatures/
 │   ├── kmer_structures.py
 │   ├── benchmark_kmer_structures.py
 │   ├── debruijn_graph.py
-│   └── call_variants_from_bubbles.py
+│   ├── call_variants_from_bubbles.py
+│   └── compare_to_alignment_based_calling.py
 ├── run_step1.sh
 ├── run_step2.sh
 ├── run_step3.sh
+├── run_step4_compare.sh
 └── README.md
 ```
 

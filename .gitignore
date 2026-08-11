@@ -9,3 +9,12 @@ data/reads/*.sam
 
 # Downloaded reference manifest is regenerable via download_reference.py
 data/reference/manifest.json
+
+# Alignment intermediates (BWA index, SAM/BAM, VCF) — regenerable via run_step4_compare.sh
+data/alignment_calling/
+data/reference/*.fasta.amb
+data/reference/*.fasta.ann
+data/reference/*.fasta.bwt
+data/reference/*.fasta.pac
+data/reference/*.fasta.sa
+data/reference/*.fasta.fai
